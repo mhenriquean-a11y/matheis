@@ -28,12 +28,13 @@ export function postgresParameters(sql){let index=0;return sql.replaceAll('?',()
 export function createPostgresDatabase(databaseUrl){
   const url=new URL(databaseUrl);
   if(!['postgres:','postgresql:'].includes(url.protocol))throw new Error('DATABASE_URL deve ser uma conexão PostgreSQL.');
+  if(url.password.includes('[YOUR-PASSWORD]')||decodeURIComponent(url.password).includes('[YOUR-PASSWORD]'))throw new Error('[YOUR-PASSWORD]');
   // Always verify the server certificate, even if the copied URL includes sslmode=require.
   for(const key of ['sslmode','sslcert','sslkey','sslrootcert'])url.searchParams.delete(key);
-  const pool=new pg.Pool({connectionString:url.toString(),ssl:{rejectUnauthorized:true},max:4,connectionTimeoutMillis:15000,idleTimeoutMillis:30000,options:'-c search_path=pratica_privada -c statement_timeout=15000'});
+  const pool=new pg.Pool({connectionString:url.toString(),ssl:{rejectUnauthorized:true},max:4,connectionTimeoutMillis:15000,idleTimeoutMillis:30000});
   pool.on('error',()=>console.error('A conexão com o banco foi interrompida. Uma nova conexão será tentada.'));
   const context=new AsyncLocalStorage();
-  const ready=pool.query('CREATE SCHEMA IF NOT EXISTS pratica_privada;'+schema+`
+  const ready=pool.query('CREATE SCHEMA IF NOT EXISTS pratica_privada; SET search_path TO pratica_privada; SET statement_timeout TO 15000;'+schema+`
     REVOKE ALL ON SCHEMA pratica_privada FROM PUBLIC;
     ALTER TABLE users ENABLE ROW LEVEL SECURITY;
     ALTER TABLE sessions ENABLE ROW LEVEL SECURITY;
@@ -59,7 +60,7 @@ export function createPostgresDatabase(databaseUrl){
       await ready;const client=await pool.connect();
       return context.run({client,transaction:false},async()=>{
         let broken=false;
-        try{return await task();}
+        try{await client.query('SET search_path TO pratica_privada; SET statement_timeout TO 15000');return await task();}
         finally{if(current().transaction)try{await client.query('ROLLBACK');}catch{broken=true;}client.release(broken);}
       });
     },
