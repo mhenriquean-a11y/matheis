@@ -19,7 +19,7 @@ Esta é a opção escolhida para o dono e sete amigos. Não contrate disco ou co
 | `INVITATION_CODES` | Os oito códigos de `.env.invitations`, separados por vírgula |
 | `TRUST_PROXY` | `1` |
 
-Não configure `DATA_DIR`: com `DATABASE_URL`, contas, sessões, convites utilizados e progresso ficam no PostgreSQL, sem depender do disco temporário do Render. O servidor cria as tabelas no esquema `pratica_privada`, separado da API pública do Supabase e com RLS habilitado. A conexão exige TLS com certificado válido.
+Não configure `DATA_DIR`: com `DATABASE_URL`, contas, sessões, convites utilizados e progresso ficam no PostgreSQL, sem depender do disco temporário do Render. O servidor cria as tabelas no esquema `pratica_privada`, separado da API pública do Supabase e com RLS habilitado. A conexão exige TLS com certificado válido. Os certificados CA oficiais de produção do Supabase estão incluídos em `server/certs` e são utilizados somente para os endereços do provedor, mantendo a verificação do certificado e do hostname.
 
 6. Publique e abra o endereço HTTPS fornecido pelo Render. Depois configure `PUBLIC_ORIGIN` com esse endereço exato, sem caminho.
 7. Use um convite para criar sua conta. Compartilhe o link e **um convite diferente** com cada amigo. Cada convite cria uma única conta; oito contas incluem o dono. O limite e o consumo dos convites são conferidos dentro de uma transação, inclusive em cadastros simultâneos.

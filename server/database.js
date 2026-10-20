@@ -3,6 +3,7 @@ import { mkdirSync, chmodSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import pg from 'pg';
+import { databaseTls } from './database-tls.js';
 const schema=`
 CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY,username TEXT NOT NULL UNIQUE,display_name TEXT NOT NULL,password_salt TEXT NOT NULL,password_hash BYTEA NOT NULL,created_at BIGINT NOT NULL);
 CREATE TABLE IF NOT EXISTS sessions(token_hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,expires_at BIGINT NOT NULL);
@@ -30,8 +31,8 @@ export function createPostgresDatabase(databaseUrl){
   if(!['postgres:','postgresql:'].includes(url.protocol))throw new Error('DATABASE_URL deve ser uma conexão PostgreSQL.');
   if(url.password.includes('[YOUR-PASSWORD]')||decodeURIComponent(url.password).includes('[YOUR-PASSWORD]'))throw new Error('[YOUR-PASSWORD]');
   // Always verify the server certificate, even if the copied URL includes sslmode=require.
-  for(const key of ['sslmode','sslcert','sslkey','sslrootcert'])url.searchParams.delete(key);
-  const pool=new pg.Pool({connectionString:url.toString(),ssl:{rejectUnauthorized:true},max:4,connectionTimeoutMillis:15000,idleTimeoutMillis:30000});
+  for(const key of ['ssl','sslmode','sslcert','sslkey','sslrootcert'])url.searchParams.delete(key);
+  const pool=new pg.Pool({connectionString:url.toString(),ssl:databaseTls(url.hostname),max:4,connectionTimeoutMillis:15000,idleTimeoutMillis:30000});
   pool.on('error',()=>console.error('A conexão com o banco foi interrompida. Uma nova conexão será tentada.'));
   const context=new AsyncLocalStorage();
   const ready=pool.query('CREATE SCHEMA IF NOT EXISTS pratica_privada; SET search_path TO pratica_privada; SET statement_timeout TO 15000;'+schema+`
