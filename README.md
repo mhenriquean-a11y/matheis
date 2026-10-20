@@ -1,6 +1,6 @@
-# Prática · Portugol
+# Tropa do Raio · Portugol
 
-Site de estudo em português com 50 questões, editor com cores, execução real de Portugol, testes automáticos, histórico local e simulado de oito questões. Baseado nos temas das aulas e nos prints fornecidos pelo estudante. Não é uma cópia nem uma integração com o corretor oficial do professor.
+Site de estudo em português com 100 questões, editor com cores, execução real de Portugol, testes automáticos, histórico local e simulado de oito questões. Baseado nos temas das aulas e nos prints fornecidos pelo estudante. Não é uma cópia nem uma integração com o corretor oficial do professor.
 
 ## Usar sem instalar ferramentas
 
@@ -35,7 +35,7 @@ npm run build
 npm run preview
 ```
 
-`npm run build` gera o site em `dist/` e o arquivo único `dist/Pratica-Portugol.html`. Para publicação estática, envie o conteúdo de `dist/` a uma hospedagem. A versão criada nesta tarefa não foi publicada em uma URL pública.
+`npm run build` gera o site em `dist/` e o arquivo único `dist/Pratica-Portugol.html`. Para publicação estática, envie o conteúdo de `dist/` a uma hospedagem. Para atualizar o serviço com contas no Render, siga a seção de atualização ao final deste documento.
 
 Testes de navegador:
 
@@ -61,7 +61,7 @@ O teste serve o build de produção, por isso execute `npm run build` antes. O t
 
 ## Validação realizada
 
-- 130 testes automatizados de executor, questões, contas e sincronização passaram, incluindo todos os casos de cada uma das 50 questões.
+- Os testes automatizados verificam executor, catálogo completo, contas, sincronização, certificados TLS e casos de cada questão. Rode `npm test` para conferir o resultado atual.
 - 19 testes de navegador passaram: correção, persistência, limite para laços infinitos, diagnóstico de erros, simulado e layout móvel; também execução do arquivo portátil servido sem assets externos.
 - Build de produção concluído.
 - Abertura direta de URL `file://` não pôde ser validada no navegador gerenciado desta máquina, que bloqueia esse protocolo por política. O arquivo portátil foi validado via HTTP sem carregar scripts, estilos ou executor externos.
@@ -76,11 +76,11 @@ Editor: [Ace](https://github.com/ajaxorg/ace), BSD, licença em `THIRD-PARTY-ACE
 
 ## Ampliação das atividades
 
-Foram acrescentadas 20 questões sem mudar os IDs anteriores nem a chave de armazenamento do progresso. O filtro **Mostrar só as 20 novas atividades** ajuda a encontrá-las. Cada nova questão mostra sua base nos PDFs ou um link para a referência conceitual consultada. Consulte `REFERENCIAS.md` para o mapeamento completo. Os enunciados e casos são autorais, não cópias do corretor do professor.
+Foram acrescentadas 20 questões sem mudar os IDs anteriores nem a chave de armazenamento do progresso. Essas 20 questões continuam disponíveis no catálogo completo; o filtro de novidades agora destaca a leva mais recente de 50 questões. Cada nova questão mostra sua base nos PDFs ou um link para a referência conceitual consultada. Consulte `REFERENCIAS.md` para o mapeamento completo. Os enunciados e casos são autorais, não cópias do corretor do professor.
 
 ## Ajuste na comparação de saídas
 
-O treino aceita mensagens com ou sem acentos, por exemplo `Divisão por zero` e `Divisao por zero`, inclusive acentos Unicode decompostos. Isso se aplica a todas as 50 questões. Valores como `0` e `0.0` continuam equivalentes nas questões numéricas. Palavras diferentes, maiúsculas diferentes, resultados incorretos e saídas extras continuam sendo rejeitados. Representações binárias continuam sendo comparadas como texto. Após atualizar, reenvie soluções antigas para obter nova correção; o histórico registra o resultado original da tentativa.
+O treino aceita mensagens com ou sem acentos, por exemplo `Divisão por zero` e `Divisao por zero`, inclusive acentos Unicode decompostos. Isso se aplica a todas as 100 questões. Valores como `0` e `0.0` continuam equivalentes nas questões numéricas. Palavras diferentes, maiúsculas diferentes, resultados incorretos e saídas extras continuam sendo rejeitados. Representações binárias continuam sendo comparadas como texto. Após atualizar, reenvie soluções antigas para obter nova correção; o histórico registra o resultado original da tentativa.
 
 ## Melhorias para estudar e revisar
 
@@ -99,3 +99,13 @@ O limite de 3 segundos só começa após o executor sinalizar que terminou de ca
 ## Contas e sincronização
 
 Cadastro, login, logout e alteração de senha estão implementados com servidor Node.js 24 e SQLite local ou PostgreSQL remoto. O grupo privado exige convite e permite limitar as contas; o caminho Render Free + Supabase Free está documentado. Cada conta guarda seu próprio progresso; a transferência do visitante é opcional. Para executar e publicar a versão com contas, siga `CONTAS-E-PUBLICACAO.md`. Publicar apenas a pasta `dist` mantém o modo visitante e não ativa contas.
+
+## Atualização: Tropa do Raio e 50 novas atividades
+
+O site passou a se chamar **Tropa do Raio**, incluindo a tela de acesso e o título da aba. Foram adicionadas 50 atividades autorais baseadas nos **quatro** PDFs das Aulas 1 a 4, confirmados pelo estudante: 5 de fundamentos, 7 de cálculos, 10 de condições, 7 de repetições, 5 de enquanto, 6 de funções, 6 de vetores e 4 de matrizes. Cada questão tem enunciado, dica, referência da aula e testes, inclusive limites e entradas inválidas quando previstos. Os critérios que complementam exercícios dos slides são explicitamente identificados como regras do treino.
+
+O catálogo agora tem **100 questões**. O filtro **Mostrar só as 50 novas atividades** destaca a última leva; Fundamentos ganhou filtro e revisão rápida. IDs antigos, chave do progresso, cookies, contas e banco continuam compatíveis. As soluções usadas na validação ficam em `test/fixtures/revision-programs.js` e não são importadas pelo aplicativo.
+
+Para atualizar o site hospedado, envie o código à branch `main` do GitHub. Se o Render não iniciar uma implantação automática, use **Manual Deploy → Deploy latest commit** no serviço existente. Não crie outro serviço nem altere `DATABASE_URL` ou convites. Aguarde **Live** e recarregue o mesmo link (Ctrl+F5 se estiver vendo a versão anterior). O PostgreSQL mantém o progresso entre implantações.
+
+Os 100 enunciados são apresentados com **Objetivo, Entrada, Saída e Regras**. As dicas levantam perguntas de raciocínio, sem código de solução ou roteiro de implementação. Exemplos de entrada e saída são opcionais e ficam recolhidos por padrão; as soluções de validação não integram o aplicativo.

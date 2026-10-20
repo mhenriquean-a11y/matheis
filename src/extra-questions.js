@@ -3,7 +3,7 @@ const base = 'https://github.com/UNIVALI-LITE/Portugol-Studio/blob/5640a2e95de1c
 const studio = path => ({ label: 'Referência: exemplos do Portugol Studio / UNIVALI', url: base + path });
 const aula = label => ({ label: `Base: ${label} do professor · exercício autoral` });
 const t = (input, output) => ({input:String(input),output:String(output)});
-const q = (id,title,topic,level,description,tests,numeric,hint,source,requiredFunction) => ({id,title,topic,level,description,tests,numeric,hint,source,requiredFunction,isNew:true});
+const q = (id,title,topic,level,description,tests,numeric,hint,source,requiredFunction) => ({id,title,topic,level,description,tests,numeric,hint,source,requiredFunction,isNew:false});
 export const extraQuestions = [
  q('altura-media','Média de três alturas','Aula 2 · Cálculos','Básico','Leia três alturas reais positivas, em metros, uma por linha. Mostre a média aritmética. Se alguma altura for menor ou igual a zero, mostre Altura invalida.',[
   t('1.5\n1.8\n1.8','1.7'),t('1\n1\n1','1'),t('0\n1.5\n1.7','Altura invalida'),t('1.7\n-1\n1.8','Altura invalida'),t('1.2\n1.5\n1.8','1.5')

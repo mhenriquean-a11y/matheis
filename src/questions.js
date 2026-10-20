@@ -1,4 +1,6 @@
 import { extraQuestions } from './extra-questions.js';
+import { statements, statementHint } from './statements.js';
+import { revisionQuestions } from './revision-questions.js';
 const test = (input, output) => ({input: String(input), output: String(output)});
 const q = (id, title, topic, level, description, tests, numeric = false, hint = '') => ({id,title,topic,level,description,tests,numeric,hint});
 export const questions = [
@@ -33,5 +35,10 @@ q('binario-decimal','Binário para decimal com validação','Atividade · Cadeia
 q('resistencias','Resistências em série e paralelo','Aula 4 · Vetores','Desafio','Leia N (1 a 50) e N resistências reais em um vetor. Se alguma for <= 0, mostre VALOR INVALIDO. Caso contrário, mostre a equivalente em série (soma) e em paralelo (1 / soma dos inversos), uma por linha, arredondadas para 2 casas com Matematica.arredondar. Não precisa completar zeros à direita.',[test('2\n10\n10','20\n5'),test('1\n47','47\n47'),test('2\n0\n10','VALOR INVALIDO'),test('2\n10\n20','30\n6.67')],true,'Use reais nos inversos: 1.0 / resistencia. Arredonde apenas os resultados.'),
 q('matriz','Soma de uma matriz','Aula 4 · Matrizes','Desafio','Leia 6 inteiros e armazene-os em uma matriz 2 por 3, preenchida linha por linha. Mostre a soma de todos os elementos.',[test('1\n2\n3\n4\n5\n6','21'),test('0\n0\n0\n0\n0\n0','0'),test('-1\n2\n-3\n4\n-5\n6','3')],true,'Use dois laços: um para as linhas e outro para as colunas.')
 ];
-questions.push(...extraQuestions);
+questions.push(...extraQuestions, ...revisionQuestions);
+for(const question of questions){
+ question.statement=statements[question.id];
+ question.description=question.statement.goal;
+ question.hint=statementHint(question);
+}
 export const examIds = ['consumo','media','intervalo','soma-zero','funcao','decimal-binario','vetor-extremos','ordenado'];

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { revisionPrograms } from './fixtures/revision-programs.js';
 const consumption='programa { funcao inicio() { real d,l leia(d) leia(l) se(d<0 ou l<=0){escreva("Dados invalidos")} senao{escreva(d/l)} } }';
 async function code(page,value){await page.evaluate(v=>window.ace.edit('editor').setValue(v,-1),value);}
 test.beforeEach(async({page})=>{await page.goto('/');await page.waitForSelector('.ace_editor');});
@@ -36,11 +37,15 @@ test('arquivo portátil executa sem buscar assets externos',async({page})=>{
 });
 
 test('novas atividades: filtro, referência e retorno ao catálogo completo',async({page})=>{
- await page.check('#only-new');await expect(page.locator('.question-item')).toHaveCount(20);
+ await expect(page).toHaveTitle('Tropa do Raio · Portugol');
+ await expect(page.locator('.brand')).toContainText('Tropa do Raio');
+ await page.check('#only-new');await expect(page.locator('.question-item')).toHaveCount(50);
+ await page.locator('[data-id="vetor-frequencia"]').click();
+ await expect(page.locator('.title-row')).toContainText('quantidade de ocorrências');
+ await expect(page.locator('.question-source')).toContainText('Aula 4');
+ await page.uncheck('#only-new');await expect(page.locator('.question-item')).toHaveCount(100);
  await page.locator('[data-id="busca-vetor"]').click();
- await expect(page.locator('.title-row')).toContainText('Busca: primeira posição');
  await expect(page.locator('.question-source a')).toHaveAttribute('href',/UNIVALI-LITE\/Portugol-Studio/);
- await page.uncheck('#only-new');await expect(page.locator('.question-item')).toHaveCount(50);
 });
 test('progresso anterior é preservado ao carregar o catálogo ampliado',async({page})=>{
  const draft='programa {funcao inicio(){escreva(42)}}';
@@ -51,7 +56,7 @@ test('progresso anterior é preservado ao carregar o catálogo ampliado',async({
  await page.click('#tab-history');await expect(page.locator('.history-list article')).toHaveCount(1);
 });
 test('atividade de função corrige o código e recusa solução sem função',async({page})=>{
- await page.check('#only-new');await page.locator('[data-id="funcao-par"]').click();
+ await page.locator('[data-id="funcao-par"]').click();
  await code(page,'programa {funcao logico eh_par(inteiro n){retorne n%2==0} funcao inicio(){inteiro n leia(n) se(eh_par(n)){escreva("PAR")} senao{escreva("IMPAR")}}}');
  await page.click('#submit');await expect(page.locator('.result-summary')).toContainText('5 de 5');
  await code(page,'programa {funcao inicio(){inteiro n leia(n) se(n%2==0){escreva("PAR")} senao{escreva("IMPAR")}}}');
@@ -98,8 +103,30 @@ test('backup importado mantém rascunho atual, evita duplicar histórico e rejei
  await expect(page.locator('#backup-message')).toContainText('progresso atual foi mantido');await expect(page.locator('#attempts')).toHaveText('1');
 });
 test('recomendação e filtros ajudam a revisar; busca aceita texto sem acento',async({page})=>{
- await expect(page.locator('#study-guide')).toContainText('Soma de reais');
+ await expect(page.locator('#study-guide')).toContainText('Mensagem de boas-vindas');
  await code(page,'programa {funcao inicio(){escreva(99)}}');await page.click('#submit');await expect(page.locator('.result-summary')).toBeVisible();
  await page.selectOption('#status-filter','review');await expect(page.locator('.question-item')).toHaveCount(1);
- await page.selectOption('#status-filter','');await page.fill('#search','media ponderada');await expect(page.locator('.question-item')).toHaveCount(1);
+ await page.selectOption('#status-filter','');await page.fill('#search','media ponderada de quatro');await expect(page.locator('.question-item')).toHaveCount(1);
+});
+
+test('novas atividades executam leitura de cadeia e soma de duas matrizes no navegador',async({page})=>{
+ await page.check('#only-new');
+ for(const [id,count] of [['boas-vindas',4],['matriz-soma-duas',4]]){
+  await page.locator(`[data-id="${id}"]`).click();await code(page,revisionPrograms[id]);
+  await page.click('#submit');await expect(page.locator('.result-summary')).toContainText(`${count} de ${count}`);
+ }
+ await page.setViewportSize({width:375,height:812});
+ await expect(page.locator('.brand')).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+});
+
+test('enunciado de prova organiza contratos e deixa exemplo recolhido sem solução pronta',async({page})=>{
+ await expect(page.locator('.statement-contract section h3')).toHaveText(['Entrada','Saída']);
+ await expect(page.locator('.statement-rules')).toContainText('distância deve ser');
+ await expect(page.locator('.example-grid')).not.toBeVisible();
+ await page.click('#hint');await expect(page.locator('#hint-box')).toBeVisible();
+ await expect(page.locator('#hint-box')).toContainText('grandezas');
+ await expect(page.locator('#hint-box')).not.toContainText('escreva(');
+ await page.screenshot({path:'/tmp/tropa-enunciado.png',fullPage:true});
+ await page.locator('.statement-example summary').click();await expect(page.locator('.example-grid')).toBeVisible();
 });

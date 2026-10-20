@@ -1,4 +1,4 @@
-const stages = ['Cálculos','Condições','Repetições','Enquanto','Funções','Vetores','Cadeias','Matrizes'];
+const stages = ['Fundamentos','Cálculos','Condições','Repetições','Enquanto','Funções','Vetores','Cadeias','Matrizes'];
 export function questionStatus(question, history) {
   const attempts = history[question.id] || [];
   if (!attempts.length) return 'todo';

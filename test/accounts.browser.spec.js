@@ -49,7 +49,7 @@ test('grupo privado permite cadastro por convite, protege arquivos e volta à en
  await new Promise(resolve=>app.server.listen(0,'127.0.0.1',resolve));
  const base=`http://127.0.0.1:${app.server.address().port}`;
  try{
-  await page.goto(base);await expect(page.locator('#title')).toHaveText('Entre para estudar');
+  await page.goto(base);await expect(page).toHaveTitle('Entrar · Tropa do Raio');await expect(page.locator('#title')).toHaveText('Entre para estudar');
   expect(await page.locator('#editor').count()).toBe(0);
   expect((await page.request.get(base+'/Pratica-Portugol.html')).status()).toBe(401);
   await page.click('#toggle');await page.fill('#name','Alice');await page.fill('#username','private_alice');await page.fill('#password',password);await page.fill('#confirm',password);await page.fill('#invite','browser-invite-alice');await page.click('#submit');

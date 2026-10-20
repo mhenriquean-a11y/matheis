@@ -1,8 +1,9 @@
+import { revisionPrograms } from './fixtures/revision-programs.js';
 import { extraPrograms } from './fixtures/extra-programs.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execute } from '../src/runner.js';
-import { compare } from '../src/judge.js';
+import { compare, requiredFunctionError } from '../src/judge.js';
 import { questions } from '../src/questions.js';
 const programs = {
  soma:'real a,b leia(a) leia(b) escreva(a+b)',
@@ -41,6 +42,7 @@ for(const q of questions){test(`Questão ${q.id}: todos os ${q.tests.length} cas
  if(['palindromo','binario-decimal'].includes(q.id))libraries='inclua biblioteca Texto --> txt';
  if(q.id==='resistencias')libraries='inclua biblioteca Matematica --> mat';
  if(q.id==='funcao')func='funcao real calcular_media(real a,real b){retorne (a+b)/2}';
- const code=extraPrograms[q.id] || `programa { ${libraries} ${func} funcao inicio(){ ${programs[q.id].replaceAll('\n','\\n')} } }`;
+ const code=revisionPrograms[q.id] || extraPrograms[q.id] || `programa { ${libraries} ${func} funcao inicio(){ ${programs[q.id].replaceAll('\n','\\n')} } }`;
+ assert.equal(requiredFunctionError(q,code),null);
  for(const t of q.tests){const actual=await execute(code,t.input);assert.ok(compare(actual,t.output,q.numeric),`entrada ${JSON.stringify(t.input)}: esperado ${JSON.stringify(t.output)}, recebido ${JSON.stringify(actual)}`);}
 });}

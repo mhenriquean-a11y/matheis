@@ -5,10 +5,10 @@ import { explainFailure } from '../src/feedback.js';
 import { questions } from '../src/questions.js';
 const attempt=(passed,total=4)=>({passed,total,date:'2026-10-19T12:00:00Z'});
 test('recomendação prioriza revisão e depois fundamento não tentado',()=>{
- assert.equal(recommendation(questions,{}).id,'soma');
+ assert.equal(recommendation(questions,{}).id,'boas-vindas');
  assert.equal(recommendation(questions,{media:[attempt(1,6)]}).id,'media');
  assert.equal(questionStatus({id:'soma'},{soma:[attempt(4),attempt(1)]}),'review');
- assert.equal(recommendation(questions,{soma:[attempt(4)]}).id,'potencia');
+ assert.equal(recommendation(questions,{soma:[attempt(4)]}).id,'boas-vindas');
 });
 test('busca ignora acentos e caixa',()=>assert.equal(searchable('Média DEZ'),'media dez'));
 test('backup antigo válido é importado sem apagar rascunhos atuais e sem duplicar histórico',()=>{
