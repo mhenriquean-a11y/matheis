@@ -192,7 +192,7 @@ function activateProgress(progress){
  editor.setValue(state.drafts[selected.id]||blank,-1);editor.setFontSize(state.fontSize||15);$('#custom-output').textContent='';save();render();
 }
 function authModeView(mode){
- authMode=mode;const register=mode==='register';if(!register)$('#auth-confirm').value='';$('#auth-title').textContent=register?'Crie sua conta':'Entre na sua conta';$('#auth-submit').textContent=register?'Criar minha conta':'Entrar';
+ if(account.privateAccess&&mode==='register')mode='login';$('#auth-register-tab').hidden=account.privateAccess;authMode=mode;const register=mode==='register';if(!register)$('#auth-confirm').value='';$('#auth-title').textContent=register?'Crie sua conta':'Entre na sua conta';$('#auth-submit').textContent=register?'Criar minha conta':'Entrar';
  $('#display-name-label').hidden=!register;$('#auth-name').required=register;$('#confirm-password-label').hidden=!register;$('#auth-confirm').required=register;
  $('#auth-password').autocomplete=register?'new-password':'current-password';$('#auth-login-tab').setAttribute('aria-pressed',!register);$('#auth-register-tab').setAttribute('aria-pressed',register);$('#auth-message').textContent='';
 }
@@ -205,7 +205,7 @@ $('#account-bar').onclick=async event=>{
  if(id==='change-password'){$('#password-form').reset();$('#password-message').textContent='';$('#password-dialog').showModal();}
  if(id==='retry-sync'){setBusy(true);try{await account.flush();const progress=await account.load(account.user);activateProgress(progress);await account.flush();}catch(error){syncStatus=error.status===401?'expired':'error';syncError=error.message;updateAccountBar();}finally{setBusy(false);}}
  if(id==='logout'){
-  setBusy(true);try{await account.logout();activateProgress(restore());syncError='';syncStatus='saved';updateAccountBar();}catch(error){syncError='Não foi possível sair sem sincronizar. '+error.message;updateAccountBar();}finally{setBusy(false);}
+  setBusy(true);try{await account.logout();if(account.privateAccess){location.replace('/');return;}activateProgress(restore());syncError='';syncStatus='saved';updateAccountBar();}catch(error){syncError='Não foi possível sair sem sincronizar. '+error.message;updateAccountBar();}finally{setBusy(false);}
  }
 };
 $('#auth-dialog').addEventListener('cancel',event=>{if(busy)event.preventDefault();});

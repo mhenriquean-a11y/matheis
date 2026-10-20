@@ -1,5 +1,35 @@
 # Contas individuais e publicação
 
+## Grupo privado gratuito: Render Free + Supabase Free
+
+Esta é a opção escolhida para o dono e sete amigos. Não contrate disco ou compute pago. Os planos gratuitos têm limites de recursos e podem suspender projetos inativos; o primeiro acesso após inatividade pode demorar. Não existe garantia de disponibilidade contínua.
+
+1. No Supabase, crie uma organização **Free** e um projeto `pratica-portugol`. Guarde a senha do banco. Não é necessário usar Supabase Auth: as contas e senhas continuam sendo administradas pelo servidor do site.
+2. Em **Connect**, selecione a conexão PostgreSQL **Session pooler**, porta **5432**. Ela costuma funcionar em hospedagens IPv4. Copie a URL, substitua o marcador da senha pela senha do banco, codificando caracteres especiais como parte de uma URL. Não envie essa conexão no chat ou em prints.
+3. Gere oito convites com `npm run invitations`. Eles ficam no arquivo privado `.env.invitations`, ignorado pelo Git. Não rode novamente sobre esse arquivo: os convites já distribuídos precisam continuar válidos.
+4. No Render, crie um Web Service a partir do repositório, branch `main`, linguagem Docker, plano **Free ($0)**. Não adicione disco persistente. O Dockerfile faz o build e inicia o servidor automaticamente.
+5. Configure as variáveis abaixo diretamente no painel do Render:
+
+| Variável | Valor |
+| --- | --- |
+| `NODE_ENV` | `production` |
+| `DATABASE_URL` | URL privada do Session pooler do Supabase |
+| `PRIVATE_ACCESS` | `1` |
+| `MAX_ACCOUNTS` | `8` |
+| `INVITATION_CODES` | Os oito códigos de `.env.invitations`, separados por vírgula |
+| `TRUST_PROXY` | `1` |
+
+Não configure `DATA_DIR`: com `DATABASE_URL`, contas, sessões, convites utilizados e progresso ficam no PostgreSQL, sem depender do disco temporário do Render. O servidor cria as tabelas no esquema `pratica_privada`, separado da API pública do Supabase e com RLS habilitado. A conexão exige TLS com certificado válido.
+
+6. Publique e abra o endereço HTTPS fornecido pelo Render. Depois configure `PUBLIC_ORIGIN` com esse endereço exato, sem caminho.
+7. Use um convite para criar sua conta. Compartilhe o link e **um convite diferente** com cada amigo. Cada convite cria uma única conta; oito contas incluem o dono. O limite e o consumo dos convites são conferidos dentro de uma transação, inclusive em cadastros simultâneos.
+8. Teste em janela anônima: sem entrar, devem aparecer somente o formulário de acesso e a opção de cadastro por convite. Atividades e arquivos do aplicativo exigem sessão válida. Não há perfil de administrador nem uma função para convidar pessoas pelo navegador nesta versão.
+9. Para trazer o estudo anterior, exporte o progresso no navegador antigo e importe depois de entrar na conta. Não há cópia automática do SQLite local para o Supabase.
+
+Um link repassado não permite cadastrar outra conta sem convite. Pessoas já autorizadas podem copiar ou compartilhar o conteúdo que visualizam; login não impede essa ação. Não publique credenciais ou códigos de convite no GitHub. A versão portátil do HTML continua independente, em modo visitante, e não é o site privado hospedado.
+
+Se a implantação falhar, confira o log sem expor a URL de conexão. O servidor não imprime essa URL. Antes de considerar concluída a publicação, valide cadastro com convite, rejeição de convite reutilizado, login de outro navegador, persistência após reinício e isolamento de progresso entre duas contas.
+
 ## O que está pronto
 
 - Cadastro por nome, usuário e senha; login e logout.
@@ -37,11 +67,11 @@ node --env-file=.env server/index.js
 
 O arquivo `.env.example` não contém senhas. Nunca publique `.env` nem `.data`.
 
-## Compartilhar um endereço público com contas
+## Alternativa com SQLite e disco persistente (pode ser paga)
 
 **Enviar apenas `dist` ao Netlify Drop não publica o servidor de contas.** Esse envio continua permitindo o modo visitante, mas não login, cadastro ou sincronização.
 
-Para contas reais, use uma hospedagem que execute Node.js 24 e disponibilize **disco persistente**, por exemplo um serviço Web no Render ou um serviço equivalente com volume. A configuração não foi publicada automaticamente e nenhum serviço pago foi criado.
+Para manter o SQLite local em uma hospedagem, use Node.js 24 e **disco persistente**, por exemplo um serviço Web no Render ou um serviço equivalente com volume. A configuração não foi publicada automaticamente e nenhum serviço pago foi criado.
 
 Configuração de um serviço Node:
 
@@ -66,7 +96,7 @@ Depois da publicação:
 
 ## Docker
 
-O `Dockerfile` usa Node.js 24 e mantém o banco fora do código, em `/data`. Em produção, execute atrás de HTTPS e monte um volume persistente. Não execute duas instâncias com discos separados esperando que compartilhem contas: esta implementação usa um único banco SQLite e uma instância de servidor.
+O `Dockerfile` usa Node.js 24. Com `DATABASE_URL`, o banco fica no PostgreSQL remoto e não precisa de volume. Sem essa variável, o modo SQLite usa `/data` e exige volume persistente para hospedagem. Nesse modo local, use uma única instância do servidor. Em ambos os modos, execute atrás de HTTPS.
 
 Para testar localmente por HTTP:
 
@@ -79,7 +109,7 @@ Em produção, mantenha `NODE_ENV=production` e informe `PUBLIC_ORIGIN` com o en
 
 ## Dados, disponibilidade e limites
 
-- Reiniciar o processo preserva contas e progresso **se o volume permanecer**. Disco temporário pode perder o banco em uma nova publicação.
+- No modo SQLite, reiniciar o processo preserva contas e progresso **se o volume permanecer**. Disco temporário pode perder o banco em uma nova publicação.
 - Faça backups do banco com a API de backup do SQLite ou pare o serviço e copie o diretório de dados inteiro; copiar apenas o arquivo principal enquanto há gravações WAL pode gerar um backup incompleto.
 - Cada usuário pode exportar seu progresso em JSON; não há senha nem cookie de sessão no arquivo exportado.
 - O limite é de 5 MB de progresso por conta. O servidor rejeita dados maiores sem sobrescrever o progresso anterior.

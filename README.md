@@ -98,4 +98,4 @@ O limite de 3 segundos só começa após o executor sinalizar que terminou de ca
 
 ## Contas e sincronização
 
-Cadastro, login, logout e alteração de senha estão implementados com servidor Node.js 24 e SQLite. Cada conta guarda seu próprio progresso; a transferência do visitante é opcional. Para executar e publicar a versão com contas, siga `CONTAS-E-PUBLICACAO.md`. Publicar apenas a pasta `dist` mantém o modo visitante e não ativa contas.
+Cadastro, login, logout e alteração de senha estão implementados com servidor Node.js 24 e SQLite local ou PostgreSQL remoto. O grupo privado exige convite e permite limitar as contas; o caminho Render Free + Supabase Free está documentado. Cada conta guarda seu próprio progresso; a transferência do visitante é opcional. Para executar e publicar a versão com contas, siga `CONTAS-E-PUBLICACAO.md`. Publicar apenas a pasta `dist` mantém o modo visitante e não ativa contas.

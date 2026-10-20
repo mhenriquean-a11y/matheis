@@ -42,3 +42,22 @@ test('alterar senha mantém o progresso e exige nova entrada em outro dispositiv
   await other.reload();await expect(other.locator('#account-bar')).toContainText('Modo visitante');await login(other,user,'new-study-test-2026');expect(await currentCode(other)).toContain('guardado na conta');
  }finally{await context.close();}
 });
+
+test('grupo privado permite cadastro por convite, protege arquivos e volta à entrada ao sair',async({page})=>{
+ const {createApplication}=await import('../server/app.js');
+ const app=createApplication({databasePath:':memory:',privateAccess:true,invitationCodes:['browser-invite-alice']});
+ await new Promise(resolve=>app.server.listen(0,'127.0.0.1',resolve));
+ const base=`http://127.0.0.1:${app.server.address().port}`;
+ try{
+  await page.goto(base);await expect(page.locator('#title')).toHaveText('Entre para estudar');
+  expect(await page.locator('#editor').count()).toBe(0);
+  expect((await page.request.get(base+'/Pratica-Portugol.html')).status()).toBe(401);
+  await page.click('#toggle');await page.fill('#name','Alice');await page.fill('#username','private_alice');await page.fill('#password',password);await page.fill('#confirm',password);await page.fill('#invite','browser-invite-alice');await page.click('#submit');
+  await page.waitForSelector('.ace_editor');await expect(page.locator('#account-bar')).toContainText('@private_alice');
+  await setCode(page,draft('grupo privado'));await sync(page);
+  await page.click('#logout');await expect(page.locator('#title')).toHaveText('Entre para estudar');
+  expect((await page.request.get(base+'/Pratica-Portugol.html')).status()).toBe(401);
+  await page.fill('#username','private_alice');await page.fill('#password',password);await page.click('#submit');
+  await page.waitForSelector('.ace_editor');expect(await currentCode(page)).toContain('grupo privado');
+ }finally{await page.goto('about:blank');await app.close();}
+});

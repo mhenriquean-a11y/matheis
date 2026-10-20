@@ -5,7 +5,7 @@ const empty=()=>({drafts:{},history:{},savedDrafts:{},exam:null,selected:'consum
 export class AccountSync {
   constructor({questions,fetcher=globalThis.fetch?.bind(globalThis),storage=browserStorage(),onStatus=()=>{},onMerge=()=>{}}){
     this.questions=questions;this.fetcher=fetcher;this.storage=storage;this.onStatus=onStatus;this.onMerge=onMerge;
-    this.user=null;this.available=false;this.revision=0;this.latest=null;this.dirty=false;this.timer=null;this.inflight=null;
+    this.user=null;this.available=false;this.privateAccess=false;this.revision=0;this.latest=null;this.dirty=false;this.timer=null;this.inflight=null;
   }
   get storageKey(){return this.user?`portugol-pratica-user-v1:${this.user.id}`:GUEST_KEY;}
   get pendingKey(){return this.storageKey+':pending';}
@@ -18,7 +18,7 @@ export class AccountSync {
   async initialize(){
     if(globalThis.location?.protocol==='file:')return null;
     try{
-      const result=await this.request('/api/auth/me',{timeout:5000});this.available=true;
+      const result=await this.request('/api/auth/me',{timeout:5000});this.available=true;this.privateAccess=!!result.privateAccess;
       if(!result.user)return null;
       return await this.load(result.user);
     }catch{this.available=false;return null;}

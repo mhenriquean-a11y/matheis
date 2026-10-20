@@ -82,3 +82,31 @@ test('progresso e conta persistem após reiniciar o servidor',async()=>{
 test('cookies de produção têm Secure e prefixo restrito ao host',async()=>{
  const f=await fixture({secureCookies:true});try{const a=await register(f.request,'alice');assert.match(a.rawCookie,/^__Host-pratica_session=/);assert.match(a.rawCookie,/; Secure/);}finally{await f.cleanup();}
 });
+
+test('grupo privado exige login para HTML e arquivos; convite só pode ser usado uma vez',async()=>{
+ const f=await fixture({privateAccess:true,invitationCodes:['convite-alice','convite-bruno']});try{
+  const screen=await fetch(f.base+'/');assert.equal(screen.status,200);assert.match(await screen.text(),/GRUPO PRIVADO/);assert.match(screen.headers.get('cache-control'),/no-store/);
+  assert.equal((await fetch(f.base+'/assets/exercises.js')).status,401);
+  assert.equal((await register(f.request,'outsider')).status,403);
+  const data={username:'alice',displayName:'Alice',password,invitationCode:'convite-alice'};
+  const results=await Promise.all([f.request('/api/auth/register',{method:'POST',data}),f.request('/api/auth/register',{method:'POST',data:{...data,username:'intruder'}})]);
+  assert.deepEqual(results.map(x=>x.status).sort(),[201,403]);
+  const account=results.find(x=>x.status===201);
+  assert.equal((await f.request('/api/auth/me',{cookie:account.cookie})).data.privateAccess,true);
+  assert.equal((await f.request('/api/progress',{cookie:account.cookie})).status,200);
+  await f.request('/api/auth/logout',{method:'POST',cookie:account.cookie,data:{}});
+  assert.equal((await f.request('/api/progress',{cookie:account.cookie})).status,401);
+  assert.match(await (await fetch(f.base+'/',{headers:{Cookie:account.cookie}})).text(),/GRUPO PRIVADO/);
+ }finally{await f.cleanup();}
+});
+test('limite privado inclui o dono e impede contas extras mesmo com convites disponíveis',async()=>{
+ const f=await fixture({privateAccess:true,maxAccounts:1,invitationCodes:['convite-alice','convite-bruno']});try{
+  const create=(username,invitationCode)=>f.request('/api/auth/register',{method:'POST',data:{username,displayName:username,password,invitationCode}});
+  assert.equal((await create('alice','convite-alice')).status,201);
+  const blocked=await create('bruno','convite-bruno');assert.equal(blocked.status,403);assert.match(blocked.data.error,/vagas/);
+  const db=new DatabaseSync(f.databasePath);assert.equal(db.prepare('SELECT COUNT(*) AS total FROM users').get().total,1);assert.equal(db.prepare('SELECT COUNT(*) AS total FROM invitations').get().total,1);db.close();
+ }finally{await f.cleanup();}
+});
+test('modo privado sem configuração de convites falha fechado',()=>{
+ assert.throws(()=>createApplication({databasePath:':memory:',privateAccess:true}),/convites/);
+});

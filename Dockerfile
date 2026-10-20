@@ -11,7 +11,8 @@ ENV NODE_ENV=production PORT=3000 DATA_DIR=/data
 COPY --from=build --chown=node:node /app/dist ./dist
 COPY --from=build --chown=node:node /app/src ./src
 COPY --from=build --chown=node:node /app/server ./server
-COPY --chown=node:node package.json LICENSE ./
+COPY --chown=node:node package.json package-lock.json LICENSE ./
+RUN npm ci --omit=dev --no-audit --no-fund
 RUN mkdir -p /data && chown node:node /data
 USER node
 VOLUME ["/data"]

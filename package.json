@@ -10,14 +10,16 @@
     "preview": "node server/index.js",
     "test": "node --test test/*.test.js",
     "test:browser": "playwright test",
-    "start": "node server/index.js"
+    "start": "node server/index.js",
+    "invitations": "node scripts/invitations.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.0",
     "vite": "^7.3.1"
   },
   "dependencies": {
-    "ace-builds": "^1.45.0"
+    "ace-builds": "^1.45.0",
+    "pg": "^8.23.1"
   },
   "engines": {
     "node": ">=24.0.0"

@@ -8,3 +8,6 @@ playwright-report/
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal
+
+.env.*
+!.env.example
