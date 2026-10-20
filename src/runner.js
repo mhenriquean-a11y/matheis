@@ -1,4 +1,26 @@
+import { Tokenizer, T_parO, T_parC, T_bracesO, T_bracesC, T_squareO, T_squareC } from '../vendor/portugol/src/compiler/tokenizer.js';
 import PortugolRuntime from '../vendor/portugol/src/compiler/vm/portugolrun.js';
+
+function analysisFailure(code, errors) {
+  if(errors.length)return errors.join('\n');
+  // Tokenize only after an unexpected analyzer failure, so delimiters in strings and
+  // comments cannot be mistaken for incomplete Portugol syntax.
+  try {
+    const tokenizer=new Tokenizer(code,()=>{});tokenizer.tokenize();
+    const openings=new Map([[T_parO,')'],[T_bracesO,'}'],[T_squareO,']']]);
+    const closings=new Map([[T_parC,T_parO],[T_bracesC,T_bracesO],[T_squareC,T_squareO]]);
+    const stack=[];
+    for(const token of tokenizer.getRelevantTokens()){
+      if(openings.has(token.id))stack.push(token);
+      else if(closings.has(token.id)){
+        if(stack.at(-1)?.id!==closings.get(token.id))return `Linha ${code.slice(0,token.index).split('\n').length}: fechamento inesperado. Confira os parênteses, colchetes e chaves deste bloco.`;
+        stack.pop();
+      }
+    }
+    if(stack.length){const token=stack.at(-1);return `Linha ${code.slice(0,token.index).split('\n').length}: falta fechar ${openings.get(token.id)}. Confira também se a expressão ou declaração antes do fechamento está completa.`;}
+  }catch{}
+  return 'O executor não conseguiu analisar este código. Confira se as declarações e expressões estão completas. Se ele funcionar no portugol.dev, envie o código para revisão do executor.';
+}
 
 export async function execute(code, input = '') {
   let value = '', injecting = false;
@@ -26,7 +48,9 @@ export async function execute(code, input = '') {
   delete runtime.libraries.Internet;
   delete runtime.libraries.ServicosWeb;
   const onError = e => errors.push(`Linha ${e.row + 1}: ${e.text}`);
-  const compiled = runtime.compilar(code, onError, false);
+  let compiled;
+  try { compiled = runtime.compilar(code, onError, false); }
+  catch { throw new Error(analysisFailure(code,errors)); }
   if (!compiled.success || errors.length) throw new Error(errors.join('\n') || 'Erro de compilação');
   await runtime.executar(code, compiled, onError, false);
   if (errors.length) throw new Error(errors.join('\n'));

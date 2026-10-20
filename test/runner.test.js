@@ -29,3 +29,25 @@ test('comparação numérica não aceita palavras nem saídas extras', () => {
  assert.ok(!compare('idade inválida','Idade invalida',true));
  assert.ok(!compare('1\n2','1',true));
 });
+
+test('código incompleto não expõe TypeError interno e identifica o delimitador pendente',async()=>{
+ for(const code of ['programa {funcao inicio(){se(', 'programa {funcao inicio(){real a,b,']){
+  await assert.rejects(execute(code),error=>{
+   assert.match(error.message,/Linha \d+:.*(?:falta fechar|fim do bloco)/);
+   assert.doesNotMatch(error.message,/Cannot read|undefined|TypeError/);return true;
+  });
+ }
+});
+test('erro anterior à falha do analisador é preservado',async()=>{
+ await assert.rejects(execute('programa {funcao inicio(){real a = } }'),error=>{
+  assert.match(error.message,/Linha/);assert.doesNotMatch(error.message,/Cannot read|TypeError/);return true;
+ });
+});
+test('delimitadores em comentários e textos não interferem na execução válida',async()=>{
+ assert.equal(await execute('programa {funcao inicio(){// ( [ {\n escreva("( ] }")}}'),'( ] }');
+});
+
+test('senao se incompleto da atividade operações mostra diagnóstico de Portugol',async()=>{
+ const code='programa {funcao inicio(){real a,b leia(a) leia(b) escreva(a+b,"\\n") escreva(a-b,"\\n") escreva(a*b,"\\n") se(b==0){escreva("Divisão por zero") retorne}senao se(a/b) }}';
+ await assert.rejects(execute(code,'6\n2'),error=>{assert.doesNotMatch(error.message,/Cannot read|undefined|TypeError/);assert.match(error.message,/Linha|analisar/);return true;});
+});

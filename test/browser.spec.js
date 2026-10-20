@@ -130,3 +130,11 @@ test('enunciado de prova organiza contratos e deixa exemplo recolhido sem soluç
  await page.screenshot({path:'/tmp/tropa-enunciado.png',fullPage:true});
  await page.locator('.statement-example summary').click();await expect(page.locator('.example-grid')).toBeVisible();
 });
+
+test('senao se incompleto apresenta erro em português em vez de falha interna',async({page})=>{
+ await page.locator('[data-id="operacoes"]').click();
+ await code(page,'programa {funcao inicio(){real a,b leia(a) leia(b) se(b==0){escreva("Divisão por zero") retorne}senao se(a/b) }}');
+ await page.click('#submit');await expect(page.locator('.result-summary')).toContainText('0 de 3');
+ await expect(page.locator('.test-grid').first()).not.toContainText('Cannot read');
+ await expect(page.locator('.test-grid').first()).toContainText(/Linha|analisar/);
+});
