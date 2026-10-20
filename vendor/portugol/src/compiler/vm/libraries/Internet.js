@@ -1,0 +1,170 @@
+import { T_parO, T_word, T_inteiro, T_cadeia, T_caracter, T_real, T_logico, T_vazio, T_Minteiro } from "../../tokenizer.js";
+import { STATE_ASYNC_RETURN, STATE_DELAY_REPEAT, VM_async_return, VM_setDelay } from "../vm.js";
+import { BibliotecaBase } from "./libHelper.js";
+
+export default class Internet extends BibliotecaBase {
+	constructor() {
+		super();
+		
+		this.members = {
+
+		"baixar_imagem":{id:T_parO,parameters:[{name:"endereco",type:T_cadeia},{name:"caminho",type:T_cadeia}],type:T_cadeia,jsSafe:false},
+		"definir_tempo_limite":{id:T_parO,parameters:[{name:"tempo_limite",type:T_inteiro}],type:T_vazio,jsSafe:true},
+		"endereco_disponivel":{id:T_parO,parameters:[{name:"endereco",type:T_cadeia}],type:T_logico,jsSafe:false},
+		"obter_texto":{id:T_parO,parameters:[{name:"endereco",type:T_cadeia}],type:T_cadeia,jsSafe:false},
+		};
+		
+		
+		this.resetar();
+	}
+	
+	resetar()
+	{
+		this.ocupado = false;
+		this.retorno = false;
+		this.abortador = false;
+		this.tempo = 0;
+		this.tempo_limite = 10000;
+	}
+
+	finalizarRequisicao()
+	{
+		this.ocupado = false;
+		this.retorno = false;
+		this.tempo = 0;
+		this.abortador = false;
+	}
+	
+	baixar_imagem(endereco, caminho)
+	{
+		return {value:"Não implementado baixar_imagem, ao invés disso, informe esse endereço da internet como o caminho na função carregar_imagem da biblioteca Graficos diretamente."}; 
+	}
+
+	definir_tempo_limite(tempo_limite)
+	{
+		this.tempo_limite = Math.max(0, tempo_limite);
+	}
+	
+	endereco_disponivel(endereco)
+	{
+		if(typeof Android !== 'undefined')
+		{
+			Android.httpgetcheck(endereco,this.tempo_limite); // eslint-disable-line
+			return {state:STATE_ASYNC_RETURN}; 
+		}
+		else
+		{
+			let ret = this.obter_texto(endereco);
+			if(ret.state == STATE_DELAY_REPEAT) {
+				return ret;
+			}
+
+			return {value:ret.__sucess};
+		}
+	}
+
+	obter_texto(endereco)
+	{
+		// Manter comportamento antigo.
+		if(typeof Android !== 'undefined')
+		{
+			Android.httpget(endereco,this.tempo_limite); // eslint-disable-line
+			return {state:STATE_ASYNC_RETURN}; 
+		}
+		else
+		{
+			return this._fazer_requisicao(endereco, "GET", {
+				credentials: 'same-origin' // Mantendo o comportamento anterior, não enviar cookies
+			});
+		}
+	}
+	
+	/**
+	 * 
+	 * @param {string} endereco 
+	 * @param {"GET"|"PATCH"|"POST"|"PUT"|"DELETE"} metodoHttp 
+	 * @param {RequestInit} [opcoes]
+	 */
+	_fazer_requisicao(endereco, metodoHttp, opcoes)
+	{
+		if(opcoes.body && opcoes.body === "") {
+			opcoes.body = undefined; // Evitar enviar body de texto vazio, o que pode causar problemas em algumas APIs
+		}
+		
+		if(this.ocupado)
+		{
+			if(this.retorno !== false)
+			{
+				let ret = this.retorno;
+				this.finalizarRequisicao();
+				return ret;
+			}
+			else
+			{
+				if((Date.now() - this.tempo) > this.tempo_limite)
+				{
+					if(this.abortador) this.abortador.abort();
+					this.finalizarRequisicao();
+					return {value:"Tempo limite atingido",__sucess:false};
+				}
+				else 
+				{
+					VM_setDelay(1);
+					return {state:STATE_DELAY_REPEAT};
+				}
+			}
+		}
+		else
+		{
+			this.ocupado = true;
+			this.tempo = Date.now();
+			this.retorno = false;
+			this.abortador = new AbortController();
+			
+			try{
+				let that = this;
+				fetch(endereco, {
+					method: metodoHttp, 
+					signal: that.abortador.signal,
+					cache: 'no-cache',
+					redirect: 'follow',
+					...(opcoes || {})
+				})
+				.then((response) => {
+					// check for error response
+					if (!response.ok) {
+						// get error message from body or default to response status
+						return response.text().then((text) => {
+							return Promise.reject(new Error(response.status + " " + response.statusText + ";" + text));
+						});
+					}
+			
+					return response.text();
+				})
+				.then((text) => {
+					if(!text) {
+						return Promise.reject(new Error("Resposta Vazia"));
+					}
+			
+					that.retorno = {value:""+text,__sucess:true};
+				})
+				.catch( (reason) => {
+					console.error(reason);
+					if (reason.name === 'AbortError') {
+						return;
+					} else {
+						that.retorno = {value:""+reason,__sucess:false};
+					}
+				});
+			}
+			catch(e) {
+				console.error(e);
+				this.finalizarRequisicao();
+				return {value:""+e,__sucess:false};
+			}
+
+			VM_setDelay(1);
+			return {state:STATE_DELAY_REPEAT};
+		}
+	}
+}

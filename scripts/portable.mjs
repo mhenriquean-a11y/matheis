@@ -1,0 +1,18 @@
+import { readFile, writeFile, readdir } from 'node:fs/promises';
+const assets=await readdir('dist/assets');
+const main=assets.find(x=>/^index-.*\.js$/.test(x));
+const worker=assets.find(x=>/^worker-.*\.js$/.test(x));
+const css=assets.find(x=>x.endsWith('.css'));
+let js=await readFile(`dist/assets/${main}`,'utf8');
+const workerCode=await readFile(`dist/assets/${worker}`,'utf8');
+const matcher=/new URL\("[^"\n]*worker-[^"\n]+\.js",import\.meta\.url\)/g;
+if(!matcher.test(js))throw new Error('Não foi possível localizar a referência ao executor.');
+js=js.replace(matcher,()=>`URL.createObjectURL(new Blob([${JSON.stringify(workerCode)}],{type:"text/javascript"}))`);
+let html=await readFile('dist/index.html','utf8');
+html=html.replace(/<script type="module"[^>]*src="[^"]+"[^>]*><\/script>/,'');
+html=html.replace(/<link rel="stylesheet"[^>]*>/,'');
+const stylesheet=await readFile(`dist/assets/${css}`,'utf8');
+html=html.replace('</head>',()=>`<style>${stylesheet}</style></head>`);
+html=html.replace('</body>',()=>`<script type="module">${js.replace(/<\/script/gi,'<\\/script')}</script></body>`);
+await writeFile('dist/Pratica-Portugol.html',html);
+console.log('Versão portátil gerada: dist/Pratica-Portugol.html');
