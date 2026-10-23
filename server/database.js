@@ -8,6 +8,7 @@ const schema=`
 CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY,username TEXT NOT NULL UNIQUE,display_name TEXT NOT NULL,password_salt TEXT NOT NULL,password_hash BYTEA NOT NULL,created_at BIGINT NOT NULL);
 CREATE TABLE IF NOT EXISTS sessions(token_hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,expires_at BIGINT NOT NULL);
 CREATE TABLE IF NOT EXISTS progress(user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,body TEXT NOT NULL,revision INTEGER NOT NULL,updated_at BIGINT NOT NULL);
+CREATE TABLE IF NOT EXISTS progress_c(user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,body TEXT NOT NULL,revision INTEGER NOT NULL,updated_at BIGINT NOT NULL);
 CREATE TABLE IF NOT EXISTS invitations(code_hash TEXT PRIMARY KEY,user_id TEXT NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE);`;
 
 export function createSqliteDatabase(path){
@@ -40,6 +41,7 @@ export function createPostgresDatabase(databaseUrl){
     ALTER TABLE users ENABLE ROW LEVEL SECURITY;
     ALTER TABLE sessions ENABLE ROW LEVEL SECURITY;
     ALTER TABLE progress ENABLE ROW LEVEL SECURITY;
+    ALTER TABLE progress_c ENABLE ROW LEVEL SECURITY;
     ALTER TABLE invitations ENABLE ROW LEVEL SECURITY;`).then(()=>{});
   // Attach a handler immediately: startup code still awaits ready and reports a safe message.
   ready.catch(()=>{});

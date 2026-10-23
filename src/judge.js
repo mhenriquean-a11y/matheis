@@ -22,8 +22,11 @@ export function requiredFunctionError(question, code) {
   const fn = question.requiredFunction || (question.id === 'funcao' ? {name:'calcular_media',type:'real'} : null);
   if (!fn) return null;
   const executable = code.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/g, ' ');
-  const declaration = new RegExp(`\\bfuncao\\s+${fn.type}\\s+${fn.name}\\s*\\(`);
+  const declaration = question.language==='c'
+    ? new RegExp(`\\b${fn.type}\\s+${fn.name}\\s*\\([^;{}]*\\)\\s*\\{`)
+    : new RegExp(`\\bfuncao\\s+${fn.type}\\s+${fn.name}\\s*\\(`);
   const calls = executable.match(new RegExp(`\\b${fn.name}\\s*\\(`, 'g')) || [];
-  return declaration.test(executable) && calls.length >= 2
-    ? null : `Declare a função ${fn.type} ${fn.name} e chame-a em inicio.`;
+  const cCalls=question.language==='c'?executable.replace(new RegExp(`\\b${fn.type}\\s+${fn.name}\\s*\\([^;{}]*\\)\\s*[;{]`,'g'),' ').match(new RegExp(`\\b${fn.name}\\s*\\(`,'g')):null;
+  return declaration.test(executable) && (question.language==='c'?cCalls?.length>0:calls.length>=2)
+    ? null : `Declare a função ${fn.type} ${fn.name} e chame-a em ${question.language==='c'?'main':'inicio'}.`;
 }

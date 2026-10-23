@@ -115,3 +115,13 @@ Em produção, mantenha `NODE_ENV=production` e informe `PUBLIC_ORIGIN` com o en
 - O limite é de 5 MB de progresso por conta. O servidor rejeita dados maiores sem sobrescrever o progresso anterior.
 - O histórico de treino é pessoal e editável no cliente. Não foi projetado como sistema antifraude para provas oficiais.
 - A versão HTML portátil funciona sem servidor apenas como visitante. Ela não cria contas fictícias no navegador.
+
+
+## Trilhas C e Portugol
+
+A atualização mantém as contas e sessões e adiciona `progress_c` ao mesmo
+banco, com a mesma proteção e controle de revisões de `progress`. A API antiga
+`/api/progress` permanece dedicada a Portugol; `/api/progress/c` guarda C.
+A nova tabela recebe RLS no PostgreSQL. Não altere DATABASE_URL nem apague
+qualquer tabela para instalar a atualização. As versões portáteis continuam
+sem contas. O código C executa no navegador e não requer GCC no servidor.

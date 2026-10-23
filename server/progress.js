@@ -1,8 +1,10 @@
 import { questions, examIds } from '../src/questions.js';
 import { validateBackup } from '../src/study.js';
 const ids=new Set(questions.map(q=>q.id));
-export function normalizeProgress(raw) {
+export function normalizeProgress(raw,language='portugol') {
+  if((raw.language||'portugol')!==language)throw new Error('O backup pertence a outra linguagem.');
   const clean=validateBackup(raw,questions);
+  if(language==='c')clean.language='c';
   clean.selected=ids.has(raw.selected)?raw.selected:'consumo';
   clean.fontSize=Number.isInteger(raw.fontSize)&&raw.fontSize>=12&&raw.fontSize<=24?raw.fontSize:15;
   clean.exam=null;

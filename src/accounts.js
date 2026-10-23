@@ -3,11 +3,12 @@ export const GUEST_KEY='portugol-pratica-v1';
 function browserStorage(){try{return globalThis.localStorage;}catch{return {getItem:()=>null,setItem:()=>{throw new Error('Armazenamento local indisponível.');},removeItem:()=>{}};}}
 const empty=()=>({drafts:{},history:{},savedDrafts:{},exam:null,selected:'consumo'});
 export class AccountSync {
-  constructor({questions,fetcher=globalThis.fetch?.bind(globalThis),storage=browserStorage(),onStatus=()=>{},onMerge=()=>{}}){
-    this.questions=questions;this.fetcher=fetcher;this.storage=storage;this.onStatus=onStatus;this.onMerge=onMerge;
+  constructor({questions,language='portugol',fetcher=globalThis.fetch?.bind(globalThis),storage=browserStorage(),onStatus=()=>{},onMerge=()=>{}}){
+    this.language=language;this.questions=questions;this.fetcher=fetcher;this.storage=storage;this.onStatus=onStatus;this.onMerge=onMerge;
     this.user=null;this.available=false;this.privateAccess=false;this.revision=0;this.latest=null;this.dirty=false;this.timer=null;this.inflight=null;
   }
-  get storageKey(){return this.user?`portugol-pratica-user-v1:${this.user.id}`:GUEST_KEY;}
+  get storageKey(){const prefix=this.language==='c'?'c-pratica':'portugol-pratica';return this.user?`${prefix}-user-v1:${this.user.id}`:`${prefix}-v1`;}
+  get progressPath(){return this.language==='c'?'/api/progress/c':'/api/progress';}
   get pendingKey(){return this.storageKey+':pending';}
   async request(path,{method='GET',data,timeout=10000}={}){
     const response=await this.fetcher(path,{method,credentials:'same-origin',headers:data?{'Content-Type':'application/json'}:{},body:data?JSON.stringify(data):undefined,signal:AbortSignal.timeout(timeout)});
@@ -24,8 +25,8 @@ export class AccountSync {
     }catch{this.available=false;return null;}
   }
   async load(user){
-    const result=await this.request('/api/progress');
-    this.user=user;this.dirty=false;this.revision=result.revision;this.latest=result.progress||empty();
+    const result=await this.request(this.progressPath);
+    this.user=user;this.dirty=false;this.revision=result.revision;this.latest=result.progress||empty();this.persistedSnapshot=JSON.stringify(this.latest);
     try{
       const pending=JSON.parse(this.storage.getItem(this.pendingKey)||'null');
       if(pending){const valid=validateBackup(pending.progress,this.questions);this.latest=mergeBackup({...pending.progress,...valid},validateBackup(result.progress||empty(),this.questions));this.dirty=true;}
@@ -40,6 +41,7 @@ export class AccountSync {
   }
   queue(progress){
     if(!this.user)return;
+    if(!this.dirty&&JSON.stringify(progress)===this.persistedSnapshot)return;
     this.latest=progress;this.dirty=true;this.onStatus('pending');
     try{this.storage.setItem(this.pendingKey,JSON.stringify({progress,revision:this.revision}));}catch{}
     clearTimeout(this.timer);this.timer=setTimeout(()=>this.flush().catch(()=>{}),700);
@@ -57,7 +59,7 @@ export class AccountSync {
       for(let retry=0;retry<3;retry++){
         const snapshot=JSON.stringify(this.latest);
         let result;
-        try{result=await this.request('/api/progress',{method:'PUT',data:{revision:this.revision,progress:JSON.parse(snapshot)}});}
+        try{result=await this.request(this.progressPath,{method:'PUT',data:{revision:this.revision,progress:JSON.parse(snapshot)}});}
         catch(error){
           if(error.status!==409)throw error;
           const remote=error.payload.progress||empty();
@@ -68,7 +70,7 @@ export class AccountSync {
           continue;
         }
         this.revision=result.revision;
-        if(JSON.stringify(this.latest)===snapshot){this.dirty=false;try{this.storage.removeItem(this.pendingKey);}catch{}this.onStatus('saved');return;}
+        if(JSON.stringify(this.latest)===snapshot){this.dirty=false;this.persistedSnapshot=snapshot;try{this.storage.removeItem(this.pendingKey);}catch{}this.onStatus('saved');return;}
       }
       throw new Error('Outro dispositivo está atualizando a conta. Tente sincronizar novamente.');
     }catch(error){this.dirty=true;this.onStatus(error.status===401?'expired':'error',error.message);throw error;}

@@ -4,7 +4,7 @@ const name=()=>`u${Date.now().toString(36)}${Math.random().toString(36).slice(2,
 const draft=value=>`programa { funcao inicio() { escreva("${value}") } }`;
 async function setCode(page,value){await page.evaluate(v=>window.ace.edit('editor').setValue(v,-1),value);}
 async function currentCode(page){return page.evaluate(()=>window.ace.edit('editor').getValue());}
-async function open(page){await page.goto('/');await page.waitForSelector('.ace_editor');await expect(page.locator('#open-auth')).toBeVisible();}
+async function open(page){await page.goto('/?language=portugol');await page.waitForSelector('.ace_editor');await expect(page.locator('#open-auth')).toBeVisible();}
 async function register(page,username,transfer=false){
  await page.click('#open-auth');await page.click('#auth-register-tab');await page.fill('#auth-name','Estudante '+username);await page.fill('#auth-username',username);await page.fill('#auth-password',password);await page.fill('#auth-confirm',password);
  if(transfer)await page.check('#transfer-guest');await page.click('#auth-submit');await expect(page.locator('#auth-dialog')).not.toBeVisible();await expect(page.locator('#account-bar')).toContainText('@'+username);

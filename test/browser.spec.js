@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { revisionPrograms } from './fixtures/revision-programs.js';
 const consumption='programa { funcao inicio() { real d,l leia(d) leia(l) se(d<0 ou l<=0){escreva("Dados invalidos")} senao{escreva(d/l)} } }';
 async function code(page,value){await page.evaluate(v=>window.ace.edit('editor').setValue(v,-1),value);}
-test.beforeEach(async({page})=>{await page.goto('/');await page.waitForSelector('.ace_editor');});
+test.beforeEach(async({page})=>{await page.goto('/?language=portugol');await page.waitForSelector('.ace_editor');});
 test('correção verdadeira, saída esperada preservada e histórico persistente',async({page})=>{
  await code(page,consumption);await page.click('#submit');await expect(page.locator('.result-summary')).toContainText('6 de 6');
  await page.reload();await expect(page.locator('#done')).toHaveText('1');

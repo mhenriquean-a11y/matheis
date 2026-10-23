@@ -1,4 +1,53 @@
-# Tropa do Raio · Portugol
+# Tropa do Raio · C e Portugol
+
+## Estudar C sem perder Portugol
+
+A página principal abre a trilha **C**, com as mesmas 100 atividades, testes
+automáticos, terminal, histórico, revisão rápida e simulado. Use **Linguagem**
+no cabeçalho para voltar a **Portugol**. `?language=portugol` abre essa trilha
+diretamente; `?language=c` abre C. A troca aguarda a sincronização quando há conta.
+
+- As contas, senhas, sessões e convites existentes continuam funcionando.
+- Portugol mantém `portugol-pratica-v1` e `portugol-pratica-user-v1:<id>` no
+  navegador e a tabela `progress` no banco, sem migração nem regravação para C.
+- C usa `c-pratica-v1`, `c-pratica-user-v1:<id>` e a tabela nova `progress_c`.
+  A criação da tabela é aditiva, em SQLite e PostgreSQL, com RLS no PostgreSQL.
+- Rascunhos, tentativas, simulados, revisões de sincronização e pendências são
+  independentes. Backups C possuem `language: "c"`; backups antigos sem essa
+  propriedade continuam sendo de Portugol. Importe cada backup na sua trilha.
+- Exportar progresso exporta a trilha atual. Exporte as duas para guardar ambas.
+
+### Executor de C
+
+PicoC Web 1.1.0, incorporado ao projeto, executa C em WebAssembly dentro de um
+Web Worker descartável: nenhum código do estudante é executado no servidor de
+contas. O limite é de 3 segundos por caso, com botão **Parar execução** e limite
+de 100 KB de saída. A entrada/saída é UTF-8 e os critérios de comparação são os
+mesmos das atividades originais. Não há serviços externos de compilação.
+
+PicoC cobre os recursos essenciais de C para este treino, mas **não é GCC nem
+uma implementação completa de ISO C**. Use `int main(void)`, `double` para reais,
+vetores com tamanho fixo, `stdio.h`, `math.h`, `string.h` e `ctype.h`. Macros
+avançadas e recursos mais recentes podem não funcionar; confirme no compilador
+da disciplina quando necessário. O editor usa realce de C e baixa arquivos `.c`.
+As sete atividades que exigem função conferem a definição e uma chamada.
+
+`dist/Pratica-C.html` abre C e `dist/Pratica-Portugol.html` abre Portugol.
+Ambos são autossuficientes, com os dois executores incorporados. Contas exigem o
+servidor; abrir o HTML diretamente continua sendo modo visitante.
+
+### Conferência anterior à adaptação
+
+Em 23/10/2026, a árvore local estava limpa em `f6792b7`. Foram conferidas as
+branches remotas e o histórico: apenas `main`, no mesmo commit, sem versão C.
+Foram reaproveitados o catálogo e os casos de teste, a correção, o sistema de
+contas, a sincronização, as importações e os recursos de estudo existentes.
+
+Para atualizar o serviço existente no Render, publique este código na mesma
+branch `main`, mantendo `DATABASE_URL`, convites e demais configurações. Não
+crie outro serviço nem substitua o banco. A inicialização cria `progress_c` e
+preserva as tabelas existentes. A versão anterior pode voltar a ler Portugol,
+pois o seu formato de armazenamento continua igual.
 
 Site de estudo em português com 100 questões, editor com cores, execução real de Portugol, testes automáticos, histórico local e simulado de oito questões. Baseado nos temas das aulas e nos prints fornecidos pelo estudante. Não é uma cópia nem uma integração com o corretor oficial do professor.
 
@@ -109,3 +158,12 @@ O catálogo agora tem **100 questões**. O filtro **Mostrar só as 50 novas ativ
 Para atualizar o site hospedado, envie o código à branch `main` do GitHub. Se o Render não iniciar uma implantação automática, use **Manual Deploy → Deploy latest commit** no serviço existente. Não crie outro serviço nem altere `DATABASE_URL` ou convites. Aguarde **Live** e recarregue o mesmo link (Ctrl+F5 se estiver vendo a versão anterior). O PostgreSQL mantém o progresso entre implantações.
 
 Os 100 enunciados são apresentados com **Objetivo, Entrada, Saída e Regras**. As dicas levantam perguntas de raciocínio, sem código de solução ou roteiro de implementação. Exemplos de entrada e saída são opcionais e ficam recolhidos por padrão; as soluções de validação não integram o aplicativo.
+
+## Validação da adaptação para C
+
+257 testes automatizados passaram, incluindo execução de C e preservação das
+trilhas no banco. Os 28 cenários de navegador foram validados, incluindo C,
+Portugol, contas, troca de trilha, persistência, interrupção, limite de execução,
+backups, versão portátil e layout móvel. Build de produção concluído.
+A sincronização também evita reenviar um estado remoto que apenas foi reexibido.
+A publicação de produção no Render precisa ser conferida no serviço existente.

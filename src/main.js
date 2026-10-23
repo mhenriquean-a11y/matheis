@@ -2,47 +2,57 @@ import './style.css';
 import ace from 'ace-builds/src-noconflict/ace';
 import 'ace-builds/src-noconflict/theme-tomorrow_night';
 import 'ace-builds/src-noconflict/mode-text';
-import { questions, examIds } from './questions.js';
+import 'ace-builds/src-noconflict/mode-c_cpp';
+import { questions as portugolQuestions, examIds } from './questions.js';
 import { compare, requiredFunctionError } from './judge.js';
 import { questionStatus, recommendation, searchable, validateBackup, mergeBackup } from './study.js';
-import { lessonFor } from './lessons.js';
+import { lessonFor as portugolLessonFor } from './lessons.js';
 import { explainFailure } from './feedback.js';
 import { AccountSync } from './accounts.js';
+import { cQuestions } from './c-curriculum.js';
+import { cLessonFor } from './c-lessons.js';
+const requestedLanguage=new URLSearchParams(location.search).get('language');
+const language=requestedLanguage==='portugol'||(!requestedLanguage&&location.pathname.endsWith('Pratica-Portugol.html'))?'portugol':'c';
+const isC=language==='c', languageName=isC?'C':'Portugol';
+const questions=isC?cQuestions:portugolQuestions;
+const lessonFor=isC?cLessonFor:portugolLessonFor;
 window.ace = ace;
 await import('../vendor/portugol/src/ace_editor/mode-portugol.js');
 const $ = s => document.querySelector(s);
 const escape = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const blank = 'programa {\n    funcao inicio() {\n        \n    }\n}\n';
+const blank = isC?'#include <stdio.h>\n\nint main(void) {\n    \n    return 0;\n}\n':'programa {\n    funcao inicio() {\n        \n    }\n}\n';
 let persistenceOK = true;
-const account=new AccountSync({questions});
+const account=new AccountSync({questions,language});
 const remoteProgress=await account.initialize();
 function restore() { try { return JSON.parse(localStorage.getItem(account.storageKey)) || {}; } catch { persistenceOK = false; return {}; } }
 let state = remoteProgress || restore();
+if(isC)state.language='c';
 state.drafts ||= {}; state.history ||= {}; state.savedDrafts ||= {}; state.exam ||= null;
 if (!questions.some(q => q.id === state.selected)) state.selected = 'consumo';
 let selected = questions.find(q => q.id === state.selected), busy = false, activeWorker, stopCurrent;
 let filter = '', search = '', tab = 'statement', onlyNew = false, statusFilter = '';
-function save() { try { localStorage.setItem(account.storageKey,JSON.stringify(state)); } catch { persistenceOK = false; $('#storage-note').textContent = 'Seu navegador bloqueou o salvamento. Exporte uma cópia do progresso.'; } account.queue(state); }
+function save() { if(isC)state.language='c';try { localStorage.setItem(account.storageKey,JSON.stringify(state)); } catch { persistenceOK = false; $('#storage-note').textContent = 'Seu navegador bloqueou o salvamento. Exporte uma cópia do progresso.'; } account.queue(state); }
 const examActive = () => state.exam && !state.exam.finished;
+document.title=`Tropa do Raio · ${languageName}`;
 document.getElementById('app').innerHTML = `
-<header class="topbar"><a class="brand" href="./"><span class="brand-mark" aria-hidden="true">ϟ</span><span>Tropa do Raio<small>PORTUGOL</small></span></a><nav aria-label="Principal"><span class="nav-active">Meu laboratório</span><a href="https://portugol.dev/" target="_blank" rel="noopener">Portugol.dev ↗</a></nav><div class="backup-actions"><button id="import" class="ghost">Importar progresso</button><button id="export" class="ghost">Exportar progresso ↓</button><input id="import-file" type="file" accept=".json,application/json" hidden></div></header>
+<header class="topbar"><a class="brand" href="./"><span class="brand-mark" aria-hidden="true">ϟ</span><span>Tropa do Raio<small>${languageName.toUpperCase()}</small></span></a><nav aria-label="Principal"><span class="nav-active">Meu laboratório</span><label class="language-choice">Linguagem <select id="language-switch" aria-label="Linguagem de estudo"><option value="c" ${isC?'selected':''}>C</option><option value="portugol" ${isC?'':'selected'}>Portugol</option></select></label></nav><div class="backup-actions"><button id="import" class="ghost">Importar progresso</button><button id="export" class="ghost">Exportar progresso ↓</button><input id="import-file" type="file" accept=".json,application/json" hidden></div></header>
 <section id="account-bar" class="account-bar" aria-label="Sua conta"></section>
 <main><section class="hero"><div><p class="eyebrow">SEU ESPAÇO PARA APRENDER FAZENDO</p><h1>Uma questão de cada vez<span>.</span></h1><p class="intro">Escreva, teste e entenda. Do primeiro cálculo aos vetores.</p></div><div class="exam-card"><span class="exam-icon">◷</span><div><strong>Seu próximo desafio</strong><p>Continue aprendendo no seu ritmo e teste o que já sabe.</p><button id="exam" class="text-button">Iniciar simulado de 8 questões →</button></div></div></section>
 <section class="stats" aria-label="Progresso"><div><span id="done">0</span><p>questões resolvidas</p></div><div><span>${questions.length}</span><p>questões para praticar</p></div><div><span id="attempts">0</span><p>tentativas registradas</p></div><div class="progress-stat"><p>Seu progresso</p><div class="progress-track"><div id="progress"></div></div><small id="progress-label"></small></div></section>
-<section id="study-guide" class="study-guide" aria-label="Sugestão de estudo"></section><p id="backup-message" role="status" hidden></p><div id="exam-banner" hidden></div>
+<p class="track-note">Estudando ${languageName} · códigos, tentativas e simulados separados por linguagem. Seu progresso de Portugol continua disponível no seletor.</p>${isC?'<p class="track-note">Executor C de treino (PicoC): recursos essenciais de C, sem compatibilidade completa com GCC. Use int main(void) e vetores de tamanho fixo.</p>':''}<section id="study-guide" class="study-guide" aria-label="Sugestão de estudo"></section><p id="backup-message" role="status" hidden></p><div id="exam-banner" hidden></div>
 <section class="workspace"><aside class="catalog"><div class="catalog-title"><h2>Questões</h2><span>${questions.length}</span></div><label class="search-label"><span>⌕</span><input id="search" placeholder="Buscar uma questão…" aria-label="Buscar uma questão"></label><select id="filter" aria-label="Filtrar por conteúdo"><option value="">Todos os conteúdos</option><option>Fundamentos</option><option>Cálculos</option><option>Condições</option><option>Repetições</option><option>Enquanto</option><option>Funções</option><option>Vetores</option><option>Cadeias</option><option>Matrizes</option></select><select id="status-filter" aria-label="Filtrar por situação"><option value="">Todas as situações</option><option value="review">Preciso revisar</option><option value="todo">Ainda não tentei</option><option value="solved">Última tentativa correta</option></select><label class="new-filter"><input id="only-new" type="checkbox"> Mostrar só as ${questions.filter(q=>q.isNew).length} novas atividades</label><div id="question-list"></div><div class="catalog-footer">✓ Seu progresso fica neste navegador.</div></aside>
 <div class="exercise"><div id="question-heading"></div><div class="tabs" role="tablist"><button role="tab" id="tab-statement" aria-selected="true">Enunciado</button><button role="tab" id="tab-learn" aria-selected="false">Revisão rápida</button><button role="tab" id="tab-history" aria-selected="false">Minhas tentativas <span id="history-count">0</span></button></div><div id="content"></div>
-<section class="editor-panel"><div class="editor-heading"><div><span class="file-dot"></span><strong>solucao.por</strong><span class="language">Portugol</span></div><div><button id="font-down" class="tiny" aria-label="Diminuir fonte do código">A−</button><button id="font-up" class="tiny" aria-label="Aumentar fonte do código">A+</button><button id="download" class="tiny">Baixar .por</button><button id="reset" class="tiny">Restaurar</button></div></div><div id="editor" aria-label="Editor de código Portugol"></div><div class="editor-footer"><span>Tab: indentar · Ctrl/⌘ + Enter: testar</span><span id="saved">Salvo neste navegador</span></div></section>
+<section class="editor-panel"><div class="editor-heading"><div><span class="file-dot"></span><strong>solucao.${isC?'c':'por'}</strong><span class="language">${languageName}</span></div><div><button id="font-down" class="tiny" aria-label="Diminuir fonte do código">A−</button><button id="font-up" class="tiny" aria-label="Aumentar fonte do código">A+</button><button id="download" class="tiny">Baixar .${isC?'c':'por'}</button><button id="reset" class="tiny">Restaurar</button></div></div><div id="editor" aria-label="Editor de código ${languageName}"></div><div class="editor-footer"><span>Tab: indentar · Ctrl/⌘ + Enter: testar</span><span id="saved">Salvo neste navegador</span></div></section>
 <div class="actions"><button id="hint" class="ghost">◉ Preciso de uma dica</button><div><button id="stop" class="ghost" hidden>Parar execução</button><button id="submit" class="primary">▶ Testar solução</button></div></div>
 <div id="next-action" hidden></div><div id="hint-box" hidden></div><section id="results" aria-live="polite"></section>
 <details class="custom"><summary>Terminal de teste · usar minhas entradas</summary><p>Digite uma entrada por linha. A saída será exibida após a execução.</p><label for="custom-input">Entrada</label><textarea id="custom-input" rows="4" placeholder="240&#10;20"></textarea><button id="run-custom" class="ghost">Executar com estas entradas</button><pre id="custom-output" aria-live="polite"></pre></details>
 </div></section>
-<footer><div><strong>Tropa do Raio</strong> Feito para aprender, tentativa por tentativa.</div><p id="storage-note">Treino independente baseado nas suas aulas. Não é o corretor oficial do professor.</p><small>Contas na versão com servidor · Executor <a href="https://github.com/erickweil/portugolweb" target="_blank" rel="noopener">Portugol Web</a> · GPL-3.0 · <a href="https://github.com/ajaxorg/ace" target="_blank" rel="noopener">Editor Ace</a> · BSD. Sem bibliotecas de gráficos e rede no executor. Testes locais não garantem aprovação em outros corretores.</small></footer></main>
+<footer><div><strong>Tropa do Raio</strong> Feito para aprender, tentativa por tentativa.</div><p id="storage-note">Treino independente baseado nas suas aulas. Não é o corretor oficial do professor.</p><small>Contas na versão com servidor · Executores <a href="https://github.com/erickweil/portugolweb" target="_blank" rel="noopener">Portugol Web</a> e <a href="https://github.com/MouhamedBourouba/picoc-web" target="_blank" rel="noopener">PicoC</a> · GPL-3.0 · <a href="https://github.com/ajaxorg/ace" target="_blank" rel="noopener">Editor Ace</a> · BSD. Sem bibliotecas de gráficos e rede no executor. Testes locais não garantem aprovação em outros corretores.</small></footer></main>
 <dialog id="exam-dialog"><form method="dialog"><p class="eyebrow">MODO SIMULADO</p><h2>Uma prova, oito desafios.</h2><p>Você pode executar seu código com entradas próprias. Dicas e correções ficam indisponíveis até entregar. O tempo é registrado, sem encerramento automático.</p><p>Uma nova rodada preserva o histórico de treino e substitui apenas o simulado anterior.</p><div class="dialog-actions"><button value="cancel" class="ghost">Continuar treinando</button><button id="confirm-exam" type="button" class="primary">Começar simulado</button></div></form></dialog>
 <dialog id="auth-dialog" class="auth-dialog"><button class="dialog-close" id="close-auth" aria-label="Fechar">×</button><p class="eyebrow">SEU ESPAÇO DE ESTUDO</p><h2 id="auth-title">Entre na sua conta</h2><p class="auth-intro">Cada pessoa tem seus próprios códigos, tentativas e progresso.</p><div class="auth-tabs"><button id="auth-login-tab" type="button" aria-pressed="true">Entrar</button><button id="auth-register-tab" type="button" aria-pressed="false">Criar conta</button></div>
 <form id="auth-form"><label id="display-name-label" hidden>Seu nome<input id="auth-name" maxlength="60" autocomplete="name"></label><label>Nome de usuário<input id="auth-username" required minlength="3" maxlength="30" pattern="[A-Za-z0-9_]{3,30}" autocomplete="username" spellcheck="false" autocapitalize="none" placeholder="Ex.: matheus_estuda"></label><small>De 3 a 30 letras sem acento, números ou _.</small><label>Senha<input id="auth-password" type="password" required minlength="8" maxlength="128" autocomplete="current-password"></label><label id="confirm-password-label" hidden>Confirme a senha<input id="auth-confirm" type="password" minlength="8" maxlength="128" autocomplete="new-password"></label><label class="transfer-option"><input id="transfer-guest" type="checkbox"> Trazer o progresso de visitante deste navegador para minha conta</label><p class="auth-note">Sem marcar essa opção, o progresso de visitante fica separado. Não há recuperação automática de senha por e-mail nesta versão.</p><p id="auth-message" role="status"></p><button class="primary" id="auth-submit" type="submit">Entrar</button></form></dialog>
 <dialog id="password-dialog" class="auth-dialog"><button class="dialog-close" id="close-password" aria-label="Fechar">×</button><h2>Alterar senha</h2><p>Após a alteração, os outros dispositivos precisarão entrar novamente.</p><form id="password-form"><label>Senha atual<input id="current-password" type="password" required autocomplete="current-password"></label><label>Nova senha<input id="new-password" type="password" minlength="8" maxlength="128" required autocomplete="new-password"></label><label>Confirme a nova senha<input id="new-password-confirm" type="password" minlength="8" maxlength="128" required autocomplete="new-password"></label><p id="password-message" role="status"></p><button class="primary" id="password-submit">Salvar nova senha</button></form></dialog>`;
-const editor = ace.edit('editor', {theme:'ace/theme/tomorrow_night',mode:'ace/mode/portugol',fontSize:state.fontSize || 15,showPrintMargin:false,tabSize:4,useSoftTabs:true,wrap:true});
+const editor = ace.edit('editor', {theme:'ace/theme/tomorrow_night',mode:isC?'ace/mode/c_cpp':'ace/mode/portugol',fontSize:state.fontSize || 15,showPrintMargin:false,tabSize:4,useSoftTabs:true,wrap:true});
 editor.session.setUseWorker(false);
 editor.setValue(state.drafts[selected.id] || blank,-1);
 editor.on('change',()=>{state.drafts[selected.id]=editor.getValue(); save(); $('#saved').textContent = persistenceOK ? (account.user?'Salvo neste dispositivo':'Salvo neste navegador') : 'Salvamento indisponível';});
@@ -103,8 +113,8 @@ $('#tab-statement').onclick=()=>{tab='statement';render();};$('#tab-history').on
 $('#hint').onclick=()=>{$('#hint-box').hidden=!$('#hint-box').hidden;$('#hint-box').textContent=selected.hint;};
 $('#reset').onclick=()=>{if(!busy&&confirm('Restaurar o código desta questão? Sua tentativa atual será substituída.'))editor.setValue(blank,-1);};
 function download(name,content,type='text/plain') {const url=URL.createObjectURL(new Blob([content],{type}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
-$('#download').onclick=()=>download(`${selected.id}.por`,editor.getValue());
-$('#export').onclick=()=>download('meu-progresso-portugol.json',JSON.stringify(state,null,2),'application/json');
+$('#download').onclick=()=>download(`${selected.id}.${isC?'c':'por'}`,editor.getValue());
+$('#export').onclick=()=>download(`meu-progresso-${language}.json`,JSON.stringify(state,null,2),'application/json');
 function changeFont(delta){state.fontSize=Math.min(24,Math.max(12,(state.fontSize||15)+delta));editor.setFontSize(state.fontSize);save();}
 $('#font-up').onclick=()=>changeFont(1);$('#font-down').onclick=()=>changeFont(-1);
 $('#import').onclick=()=>$('#import-file').click();
@@ -114,7 +124,9 @@ $('#import-file').onchange=async event=>{
  try{
   if(busy||examActive())throw new Error('Finalize a execução ou o simulado antes de importar.');
   if(file.size>10*1024*1024)throw new Error('O arquivo ultrapassa 10 MB.');
-  const imported=validateBackup(JSON.parse(await file.text()),questions);
+  const raw=JSON.parse(await file.text());
+  if((raw.language||'portugol')!==language)throw new Error('Este backup é de outra linguagem. Troque a linguagem antes de importar.');
+  const imported=validateBackup(raw,questions);
   const combined=mergeBackup(state,imported);
   // Confirmar a gravação antes de substituir o estado em memória.
   localStorage.setItem(account.storageKey,JSON.stringify(combined));state=combined;persistenceOK=true;
@@ -134,10 +146,10 @@ $('#content').onclick=event=>{
   editor.setValue(oldCode,-1);save();editor.focus();
  }
 };
-function setBusy(value) {busy=value;$('#submit').disabled=value;$('#run-custom').disabled=value;$('#stop').hidden=!value;$('#exam').disabled=value;$('#reset').disabled=value;$('#tab-history').disabled=value||!!examActive();$('#tab-statement').disabled=value;$('#tab-learn').disabled=value||!!examActive();$('#import').disabled=value||!!examActive();const rec=$('#recommended');if(rec)rec.disabled=value;editor.setReadOnly(value);const f=$('#finish-exam');if(f)f.disabled=value;for(const button of document.querySelectorAll('#account-bar button'))button.disabled=value;}
+function setBusy(value) {busy=value;$('#language-switch').disabled=value;$('#submit').disabled=value;$('#run-custom').disabled=value;$('#stop').hidden=!value;$('#exam').disabled=value;$('#reset').disabled=value;$('#tab-history').disabled=value||!!examActive();$('#tab-statement').disabled=value;$('#tab-learn').disabled=value||!!examActive();$('#import').disabled=value||!!examActive();const rec=$('#recommended');if(rec)rec.disabled=value;editor.setReadOnly(value);const f=$('#finish-exam');if(f)f.disabled=value;for(const button of document.querySelectorAll('#account-bar button'))button.disabled=value;}
 function run(code,input) {
  return new Promise(resolve=>{
-  const worker=new Worker(new URL('./worker.js',import.meta.url),{type:'module'}); activeWorker=worker;
+  const worker=isC?new Worker(new URL('./c-worker.js',import.meta.url),{type:'module'}):new Worker(new URL('./worker.js',import.meta.url),{type:'module'}); activeWorker=worker;
   let completed=false, started=false;
   const end=result=>{if(completed)return;completed=true;clearTimeout(timer);worker.terminate();activeWorker=null;stopCurrent=null;resolve(result);};
   let timer=setTimeout(()=>end({error:'O executor demorou para iniciar. Recarregue a página e tente novamente.'}),30000);
@@ -186,6 +198,7 @@ function updateAccountBar(){
 account.onStatus=(status,message='')=>{syncStatus=status;syncError=message;updateAccountBar();};
 account.onMerge=progress=>{state=progress;try{localStorage.setItem(account.storageKey,JSON.stringify(state));}catch{}updateStats();list();renderStudyGuide();};
 function activateProgress(progress){
+ if(isC && progress)progress.language='c';
  state=progress||{};state.drafts||={};state.history||={};state.savedDrafts||={};state.exam||=null;
  if(!questions.some(q=>q.id===state.selected))state.selected='consumo';selected=questions.find(q=>q.id===state.selected);
  filter='';search='';statusFilter='';onlyNew=false;tab='statement';$('#filter').value='';$('#search').value='';$('#status-filter').value='';$('#only-new').checked=false;
@@ -203,7 +216,7 @@ $('#account-bar').onclick=async event=>{
   if(!account.available){$('#auth-message').textContent='Contas precisam da versão com servidor. O arquivo HTML e a publicação apenas estática funcionam em modo visitante.';$('#auth-submit').disabled=true;}else $('#auth-submit').disabled=false;
  }
  if(id==='change-password'){$('#password-form').reset();$('#password-message').textContent='';$('#password-dialog').showModal();}
- if(id==='retry-sync'){setBusy(true);try{await account.flush();const progress=await account.load(account.user);activateProgress(progress);await account.flush();}catch(error){syncStatus=error.status===401?'expired':'error';syncError=error.message;updateAccountBar();}finally{setBusy(false);}}
+ if(id==='retry-sync'){syncStatus='saving';syncError='';updateAccountBar();setBusy(true);try{await account.flush();const progress=await account.load(account.user);activateProgress(progress);await account.flush();}catch(error){syncStatus=error.status===401?'expired':'error';syncError=error.message;updateAccountBar();}finally{setBusy(false);}}
  if(id==='logout'){
   setBusy(true);try{await account.logout();if(account.privateAccess){location.replace('/');return;}activateProgress(restore());syncError='';syncStatus='saved';updateAccountBar();}catch(error){syncError='Não foi possível sair sem sincronizar. '+error.message;updateAccountBar();}finally{setBusy(false);}
  }
@@ -234,3 +247,5 @@ window.addEventListener('online',()=>{if(account.user)account.flush().catch(()=>
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&account.user)account.flush().catch(()=>{});});
 if(account.user&&account.dirty)account.queue(state);
 render();
+
+$('#language-switch').onchange=async event=>{const next=event.target.value;setBusy(true);try{save();await account.flush();const url=new URL(location.href);url.searchParams.set('language',next);location.assign(url);}catch(error){event.target.value=language;alert('Não foi possível sincronizar antes de trocar: '+error.message);setBusy(false);}};

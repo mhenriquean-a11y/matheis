@@ -43,7 +43,7 @@ export function createApplication({databasePath,databaseUrl,privateAccess=false,
   function json(res,status,value){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(value));}
   async function handle(req,res){
     res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','same-origin');res.setHeader('X-Frame-Options','DENY');
-    res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; worker-src 'self' blob:; connect-src 'self'; img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
+    res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; worker-src 'self' blob:; connect-src 'self'; img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
     try{
       const url=new URL(req.url,'http://localhost');
       if(url.pathname==='/healthz')return json(res,200,{ok:true});
@@ -106,21 +106,23 @@ export function createApplication({databasePath,databaseUrl,privateAccess=false,
           await db.exec('BEGIN IMMEDIATE');try{(await db.prepare('UPDATE users SET password_salt=?,password_hash=? WHERE id=?').run(salt,next,user.id));(await db.prepare('DELETE FROM sessions WHERE user_id=?').run(user.id));await db.exec('COMMIT');}catch(e){await db.exec('ROLLBACK');throw e;}
           await signIn(req,res,user.id);return json(res,200,{ok:true});
         }
-        if(url.pathname==='/api/progress'&&req.method==='GET'){
-          const progress=(await db.prepare('SELECT body,revision FROM progress WHERE user_id=?').get(user.id));
+        const isC=url.pathname==='/api/progress/c';
+        const progressTable=isC?'progress_c':'progress';
+        if((isC||url.pathname==='/api/progress')&&req.method==='GET'){
+          const progress=(await db.prepare(`SELECT body,revision FROM ${progressTable} WHERE user_id=?`).get(user.id));
           return json(res,200,{progress:progress?JSON.parse(progress.body):null,revision:progress?.revision||0});
         }
-        if(url.pathname==='/api/progress'&&req.method==='PUT'){
+        if((isC||url.pathname==='/api/progress')&&req.method==='PUT'){
           const data=await body(req);
           if(!Number.isSafeInteger(data.revision)||data.revision<0)throw new RequestError(400,'Revisão inválida.');
-          let progress;try{progress=normalizeProgress(data.progress);}catch(error){throw new RequestError(400,error.message);}
+          let progress;try{progress=normalizeProgress(data.progress,isC?'c':'portugol');}catch(error){throw new RequestError(400,error.message);}
           const encoded=JSON.stringify(progress);if(Buffer.byteLength(encoded)>5*1024*1024)throw new RequestError(413,'Seu progresso ultrapassa 5 MB. Exporte um backup.');
           await db.exec('BEGIN IMMEDIATE');
           try{
-            const previous=(await db.prepare('SELECT body,revision FROM progress WHERE user_id=?').get(user.id));
+            const previous=(await db.prepare(`SELECT body,revision FROM ${progressTable} WHERE user_id=?`).get(user.id));
             if((previous?.revision||0)!==data.revision){await db.exec('ROLLBACK');return json(res,409,{error:'Outro dispositivo atualizou o progresso.',progress:previous?JSON.parse(previous.body):null,revision:previous?.revision||0});}
             const revision=data.revision+1;
-            (await db.prepare('INSERT INTO progress VALUES(?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET body=excluded.body,revision=excluded.revision,updated_at=excluded.updated_at').run(user.id,encoded,revision,Date.now()));
+            (await db.prepare(`INSERT INTO ${progressTable} VALUES(?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET body=excluded.body,revision=excluded.revision,updated_at=excluded.updated_at`).run(user.id,encoded,revision,Date.now()));
             await db.exec('COMMIT');return json(res,200,{revision});
           }catch(error){if(db.isTransaction)await db.exec('ROLLBACK');throw error;}
         }

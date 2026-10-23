@@ -37,3 +37,23 @@ test('carregamento recupera a pendência pessoal sem importar dados do visitante
  const sync=new AccountSync({questions,storage:store,fetcher:async path=>path.endsWith('/me')?response({user:{id:'alice'}}):response({progress:progress('servidor'),revision:1})});
  const loaded=await sync.initialize();assert.equal(loaded.drafts.soma,'pendente da Alice');assert.equal(loaded.savedDrafts.soma[0].code,'servidor');assert.equal(sync.dirty,true);
 });
+
+test('reexibir progresso remoto não o marca como edição nem reenvia rascunho obsoleto',async()=>{
+ let writes=0,remote=progress('primeiro');
+ const sync=new AccountSync({questions,storage:storage(),fetcher:async(path,options)=>{
+  if(path.endsWith('/me'))return response({user:{id:'alice'}});
+  if(options.method==='GET')return response({progress:remote,revision:1});
+  writes++;return response({revision:2});
+ }});
+ const loaded=await sync.initialize();sync.queue(loaded);assert.equal(sync.dirty,false);
+ remote=progress('outro dispositivo');await sync.flush();const updated=await sync.load(sync.user);
+ assert.equal(writes,0);assert.equal(updated.drafts.soma,'outro dispositivo');
+});
+test('C mantém as mesmas contas com chaves e endpoint de progresso independentes',async()=>{
+ const paths=[],store=storage();const sync=new AccountSync({questions,language:'c',storage:store,fetcher:async(path,options)=>{
+  paths.push(path);if(path.endsWith('/me'))return response({user:{id:'alice'}});
+  if(options.method==='GET')return response({progress:null,revision:0});return response({revision:1});
+ }});
+ assert.equal(sync.storageKey,'c-pratica-v1');await sync.initialize();assert.equal(sync.storageKey,'c-pratica-user-v1:alice');
+ sync.queue({...progress('C'),language:'c'});await sync.flush();assert.deepEqual(paths,['/api/auth/me','/api/progress/c','/api/progress/c']);
+});

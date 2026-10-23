@@ -110,3 +110,20 @@ test('limite privado inclui o dono e impede contas extras mesmo com convites dis
 test('modo privado sem configuração de convites falha fechado',()=>{
  assert.throws(()=>createApplication({databasePath:':memory:',privateAccess:true}),/convites/);
 });
+
+test('C usa a mesma conta e mantém progresso, revisões e simulado de Portugol intactos',async()=>{
+ const f=await fixture();try{
+  const a=await register(f.request,'alice'),b=await register(f.request,'bruno');
+  const por={...progress('programa antigo'),exam:{started:123,finished:false,answers:{consumo:'resposta antiga'}}};
+  await f.request('/api/progress',{method:'PUT',cookie:a.cookie,data:{revision:0,progress:por}});
+  const before=(await f.request('/api/progress',{cookie:a.cookie})).data;
+  assert.equal((await f.request('/api/progress/c',{cookie:a.cookie})).data.progress,null);
+  const c={...progress('int main(void){return 0;}'),language:'c'};
+  assert.equal((await f.request('/api/progress/c',{method:'PUT',cookie:a.cookie,data:{revision:0,progress:c}})).status,200);
+  assert.deepEqual((await f.request('/api/progress',{cookie:a.cookie})).data,before);
+  assert.equal((await f.request('/api/progress/c',{cookie:b.cookie})).data.progress,null);
+  assert.equal((await f.request('/api/progress/c',{method:'PUT',cookie:a.cookie,data:{revision:0,progress:c}})).status,409);
+  assert.equal((await f.request('/api/progress',{method:'PUT',cookie:a.cookie,data:{revision:1,progress:c}})).status,400);
+  assert.equal((await f.request('/api/progress/c',{method:'PUT',cookie:a.cookie,data:{revision:1,progress:{...por,language:'portugol'}}})).status,400);
+ }finally{await f.cleanup();}
+});
